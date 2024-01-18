@@ -20,19 +20,20 @@ def generalized_steps(x, seq, model, b, **kwargs):
             at_next = compute_alpha(b, next_t.long())
             xt = xs[-1].to('cuda')
             et = model(xt, t)
-            x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()
+            x0_t = (xt - et * (1 - at)) / at
             x0_preds.append(x0_t.to('cpu'))
             c1 = (
-                kwargs.get("eta", 0) * ((1 - at / at_next) * (1 - at_next) / (1 - at)).sqrt()
+                kwargs.get("eta", 0) * ((1 - at / at_next) * (1 - at_next) / (1 - at))
             )
-            c2 = ((1 - at_next) - c1 ** 2).sqrt()
-            xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x) + c2 * et
+            c2 = ((1 - at_next) ** 2 - c1 ** 2).sqrt()
+            xt_next = at_next * x0_t + c1 * torch.randn_like(x) + c2 * et
             xs.append(xt_next.to('cpu'))
 
     return xs, x0_preds
 
 
 def ddpm_steps(x, seq, model, b, **kwargs):
+    # NOTE : not fixed
     with torch.no_grad():
         n = x.size(0)
         seq_next = [-1] + list(seq[:-1])
