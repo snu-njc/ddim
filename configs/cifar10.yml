@@ -30,7 +30,7 @@ diffusion:
     num_diffusion_timesteps: 1000
 
 training:
-    batch_size: 128
+    batch_size: 100 # 128
     n_epochs: 10000
     n_iters: 5000000
     snapshot_freq: 5000
