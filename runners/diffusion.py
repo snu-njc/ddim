@@ -133,6 +133,10 @@ class Diffusion(object):
             step = states[3]
             if self.config.model.ema:
                 ema_helper.load_state_dict(states[4])
+        if self.args.fine_tune:
+            weights = torch.load(os.path.join(self.args.log_path, "model-790000.ckpt"))
+            model.load_state_dict(weights)
+            
 
         for epoch in range(start_epoch, self.config.training.n_epochs):
             data_start = time.time()
@@ -255,7 +259,7 @@ class Diffusion(object):
         config = self.config
         img_id = len(glob.glob(f"{self.args.image_folder}/*"))
         print(f"starting from image {img_id}")
-        total_n_samples = 50000
+        total_n_samples = 10000 #50000
         n_rounds = (total_n_samples - img_id) // config.sampling.batch_size
 
         with torch.no_grad():
