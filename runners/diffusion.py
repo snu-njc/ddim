@@ -16,7 +16,7 @@ from datasets import get_dataset, data_transform, inverse_data_transform
 from functions.ckpt_util import get_ckpt_path
 
 import torchvision.utils as tvu
-
+from collections import OrderedDict
 
 def torch2hwcuint8(x, clip=False):
     if clip:
@@ -24,7 +24,7 @@ def torch2hwcuint8(x, clip=False):
     x = (x + 1.0) / 2.0
     return x
 
-
+ 
 def get_beta_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_timesteps):
     def sigmoid(x):
         return 1 / (np.exp(-x) + 1)
@@ -106,7 +106,18 @@ class Diffusion(object):
             num_workers=config.data.num_workers,
         )
         model = Model(config)
-
+        
+        if self.args.use_pretrained:
+            if self.config.data.dataset == "CIFAR10":
+                name = "cifar10"
+            elif self.config.data.dataset == "LSUN":
+                name = f"lsun_{self.config.data.category}"
+            else:
+                raise ValueError
+            ckpt = get_ckpt_path(f"ema_{name}")
+            print("Loading checkpoint {}".format(ckpt))
+            model.load_state_dict(torch.load(ckpt, map_location=self.device))
+        
         model = model.to(self.device)
         model = torch.nn.DataParallel(model)
 
@@ -133,10 +144,6 @@ class Diffusion(object):
             step = states[3]
             if self.config.model.ema:
                 ema_helper.load_state_dict(states[4])
-        if self.args.fine_tune:
-            weights = torch.load(os.path.join(self.args.log_path, "model-790000.ckpt"))
-            model.load_state_dict(weights)
-            
 
         for epoch in range(start_epoch, self.config.training.n_epochs):
             data_start = time.time()
@@ -158,7 +165,7 @@ class Diffusion(object):
                     low=0, high=self.num_timesteps, size=(n // 2 + 1,)
                 ).to(self.device)
                 t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:n]
-                loss = loss_registry[config.model.type](model, x, t, e, b)
+                loss = loss_registry[config.model.type](model, x, t, e, b, args.linear)
 
                 tb_logger.add_scalar("loss", loss, global_step=step)
 
@@ -369,7 +376,7 @@ class Diffusion(object):
                 raise NotImplementedError
             from functions.denoising import generalized_steps
 
-            xs = generalized_steps(x, seq, model, self.betas, eta=self.args.eta)
+            xs = generalized_steps(x, seq, model, self.betas, self.args.linear, eta=self.args.eta)
             x = xs
         elif self.args.sample_type == "ddpm_noisy":
             if self.args.skip_type == "uniform":

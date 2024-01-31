@@ -87,6 +87,7 @@ def parse_args_and_config():
     )
     parser.add_argument("--sequence", action="store_true")
     parser.add_argument("--fine_tune", action="store_true")
+    parser.add_argument("--linear", action="store_true")
 
     args = parser.parse_args()
     args.log_path = os.path.join(args.exp, "logs", args.doc)
