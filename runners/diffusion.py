@@ -123,7 +123,7 @@ class Diffusion(object):
             pretrained = torch.nn.DataParallel(pretrained)
             
             if self.args.distill:
-                states = torch.load(os.path.join(self.args.exp, "logs", "ddim_reflow", "ckpt.pth"))
+                states = torch.load(os.path.join(self.args.exp, "logs", "reflow_scaled_1e-5", "ckpt.pth"))
                 pretrained.load_state_dict(states[0])
                 if not self.args.resume_training:
                     model.load_state_dict(states[0])
@@ -402,7 +402,7 @@ class Diffusion(object):
         config = self.config
         img_id = len(glob.glob(f"{self.args.image_folder}/*"))
         print(f"starting from image {img_id}")
-        total_n_samples = 10000 #50000
+        total_n_samples = 10000
         n_rounds = (total_n_samples - img_id) // config.sampling.batch_size
 
         with torch.no_grad():

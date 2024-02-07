@@ -1,8 +1,8 @@
 
 from torchvision.datasets import CIFAR10
 test_dataset = CIFAR10(
-    "./datasets/cifar10_test",
-    train=False,
+    "./datasets/cifar10",
+    train=True,
     download=True
 )
 

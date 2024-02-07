@@ -63,7 +63,7 @@ def generalized_steps(x, seq, model, b, linear, reflow, **kwargs):
                 at = compute_alpha(b, t.long())
                 at_next = compute_alpha(b, next_t.long())
                 xt = xs[-1].to(x.device)
-                et_sub_x0 = model(xt, t)
+                et_sub_x0 = model(xt, t) * math.sqrt(2.0)
                 coef = (at_next.sqrt() + (1-at_next).sqrt()) / (at.sqrt() + (1-at).sqrt())
                 xt_next = coef * xt - (at_next.sqrt() - coef * at.sqrt()) * et_sub_x0
                 xs.append(xt_next.to('cpu'))

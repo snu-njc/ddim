@@ -2,5 +2,6 @@
 __pycache__/
 image_samples/
 image_cifar10/
+image_cifar10_test/
 logs/
 tensorboard/
