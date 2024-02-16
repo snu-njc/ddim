@@ -168,7 +168,7 @@ class Diffusion(object):
                     with torch.no_grad():
                         skip = self.num_timesteps // args.timesteps
                         seq = range(0, self.num_timesteps, skip)
-                        xs_, _ = generalized_steps(es, seq, pretrained, self.betas, self.args.linear, self.args.distill, eta=self.args.eta)
+                        xs_, _ = generalized_steps(es, seq, pretrained, self.betas, False, self.args.distill, eta=self.args.eta)
                     es = es.to('cpu')
                     xs = xs_[-1]
                     b = self.betas

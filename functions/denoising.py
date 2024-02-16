@@ -1,9 +1,14 @@
 import torch
 import math
 
-def compute_alpha(beta, t):
-    beta = torch.cat([torch.zeros(1).to(beta.device), beta], dim=0)
-    a = (1 - beta).cumprod(dim=0).index_select(0, t + 1).view(-1, 1, 1, 1)
+def compute_alpha(beta, t, linear=False):
+    if linear:
+        a = 1 - torch.arange(1, beta.shape[0]+1, dtype=beta.dtype, device=beta.device) / (beta.shape[0]+1)
+        a = torch.cat([torch.ones(1).to(a.device), a], dim=0)
+        a = a.index_select(0, t + 1).view(-1, 1, 1, 1)
+    else:
+        beta = torch.cat([torch.zeros(1).to(beta.device), beta], dim=0)
+        a = (1 - beta).cumprod(dim=0).index_select(0, t + 1).view(-1, 1, 1, 1)
     return a
 
 
@@ -13,7 +18,23 @@ def generalized_steps(x, seq, model, b, linear, reflow, **kwargs):
         seq_next = [-1] + list(seq[:-1])
         x0_preds = []
         xs = [x]
-        if linear:
+        
+        if reflow:
+            for i, j in zip(reversed(seq), reversed(seq_next)):
+                t = (torch.ones(n) * i).to(x.device)
+                next_t = (torch.ones(n) * j).to(x.device)
+                at = compute_alpha(b, t.long(), linear)
+                at_next = compute_alpha(b, next_t.long(), linear)
+                xt = xs[-1].to(x.device)
+                et_sub_x0 = model(xt, t) * math.sqrt(2.0)
+                coef = (at_next.sqrt() + (1-at_next).sqrt()) / (at.sqrt() + (1-at).sqrt())
+                if linear:
+                    xt_next = xt - (at_next - at) * et_sub_x0
+                else:
+                    xt_next = coef * xt - (at_next.sqrt() - coef * at.sqrt()) * et_sub_x0
+                xs.append(xt_next.to('cpu'))
+                
+        elif linear:
             """
             for i, j in zip(reversed(seq), reversed(seq_next)):
                 t = (torch.ones(n) * i).to(x.device)
@@ -54,18 +75,6 @@ def generalized_steps(x, seq, model, b, linear, reflow, **kwargs):
                 )
                 c2 = ((1 - rt_next) ** 2 - c1 ** 2).sqrt()
                 xt_next = rt_next * x0_t + c1 * torch.randn_like(x) + c2 * et
-                xs.append(xt_next.to('cpu'))
-        
-        elif reflow:
-            for i, j in zip(reversed(seq), reversed(seq_next)):
-                t = (torch.ones(n) * i).to(x.device)
-                next_t = (torch.ones(n) * j).to(x.device)
-                at = compute_alpha(b, t.long())
-                at_next = compute_alpha(b, next_t.long())
-                xt = xs[-1].to(x.device)
-                et_sub_x0 = model(xt, t) * math.sqrt(2.0)
-                coef = (at_next.sqrt() + (1-at_next).sqrt()) / (at.sqrt() + (1-at).sqrt())
-                xt_next = coef * xt - (at_next.sqrt() - coef * at.sqrt()) * et_sub_x0
                 xs.append(xt_next.to('cpu'))
                 
         else:

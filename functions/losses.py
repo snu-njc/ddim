@@ -7,11 +7,12 @@ def noise_estimation_loss(model,
                           e: torch.Tensor,
                           b: torch.Tensor,
                           linear=False, reflow=False, keepdim=False):
-    a = (1-b).cumprod(dim=0).index_select(0, t).view(-1, 1, 1, 1)
-    
     if linear:
-        x = (x0 * a + e * (1.0 - a)) / (1.0 - 2 * a + 2 * a**2).sqrt()
+        a = 1 - torch.arange(1, b.shape[0]+1, dtype=b.dtype, device=b.device) / (b.shape[0]+1)
+        a = a.index_select(0, t).view(-1, 1, 1, 1)
+        x = (x0 * a + e * (1.0 - a)) # / (1.0 - 2 * a + 2 * a**2).sqrt()
     else:
+        a = (1-b).cumprod(dim=0).index_select(0, t).view(-1, 1, 1, 1)
         x = x0 * a.sqrt() + e * (1.0 - a).sqrt()
     output = model(x, t.float())
     
